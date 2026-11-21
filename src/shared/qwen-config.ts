@@ -1,12 +1,13 @@
 // Everything Qwen-specific lives here: endpoint, request shape, limits, result shape.
-// Source: QwenCloud docs (non-real-time ASR, "Improve recognition accuracy", pricing).
-// Items marked UNVERIFIED are guesses to confirm with scripts/qwen-probe.sh.
+// Source: QwenCloud docs, plus live checks on 2026-11-21 (scripts/qwen-probe.sh and qwen-chat-probe.sh).
+// VERIFIED live: submit/poll/result format, diarization_enabled -> speaker_id, times in ms,
+//   parameters.vocabulary (instant hotwords) fixes a misheard name, chat endpoint + qwen-plus.
+// NOT verified: mixed-language behaviour, diarization beyond 2 h, effect of input.context (see below).
 
 export const QWEN_DEFAULT_BASE_URL = "https://ap-southeast-1.maas.qwencloudapi.com";
 export const QWEN_DEFAULT_MODEL = "qwen-audio-3.1-asr-flash-filetrans";
 // Chat model for the optional AI correction pass.
-// UNVERIFIED: neither the endpoint path nor the model name came from the docs you pasted.
-// Override with the QWEN_CHAT_URL / QWEN_CHAT_MODEL vars; check with scripts/qwen-chat-probe.sh.
+// VERIFIED live (HTTP 200, valid JSON reply). Override with the QWEN_CHAT_URL / QWEN_CHAT_MODEL vars if needed.
 export const QWEN_DEFAULT_CHAT_MODEL = "qwen-plus";
 export const QWEN_CHAT_PATH = "/compatible-mode/v1/chat/completions";
 export const SUBMIT_PATH = "/api/v1/services/audio/asr/transcription";
@@ -14,10 +15,13 @@ export const taskPath = (taskId: string) => `/api/v1/tasks/${encodeURIComponent(
 
 /** The docs mark diarization as mono-only, so only channel 0 is sent. */
 export const CHANNEL_IDS = [0];
-/** UNVERIFIED: hint list for our three languages; confirm mixed-language behaviour with the probe. */
+/** Accepted by the API (no error). Its effect on mixed-language audio is still untested. */
 export const LANGUAGE_HINTS = ["id", "en", "zh"];
 
 // Context enhancement: latest 5 turns, <= 400 characters of text per turn (extra is silently cut).
+// Live tests (4 s sample clip): the request is accepted, but the transcript did not improve and the input
+// token count mostly did not change, so treat input.context as a weak hint. Hotwords (vocabulary) and the
+// AI correction pass are what reliably fix names.
 export const ASR_CONTEXT_MAX_CHARS = 400;
 // Instant hotwords (parameters.vocabulary): up to 2000 terms per request, weight 1-5 (start at 4).
 export const MAX_HOTWORDS = 2000;

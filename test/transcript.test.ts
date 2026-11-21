@@ -10,6 +10,7 @@ import {
   speakersIn,
 } from "../src/shared/transcript";
 import type { QwenResult } from "../src/shared/qwen-config";
+import { readFileSync } from "node:fs";
 
 const s = (begin: number, end: number, text: string, speaker?: number) => ({
   begin_time: begin,
@@ -104,5 +105,15 @@ describe("long recordings", () => {
     expect(named.length).toBeGreaterThan(500);
     expect(buf.byteLength).toBeGreaterThan(10_000);
     expect(performance.now() - t0).toBeLessThan(5000);
+  });
+});
+
+describe("real Qwen result (qwen-audio-3.1-asr-flash-filetrans, diarization on)", () => {
+  const real = JSON.parse(readFileSync(new URL("./fixtures/qwen-real-result.json", import.meta.url), "utf8")) as QwenResult;
+  it("normalizes into one trimmed turn for speaker 0", () => {
+    expect(normalizeResult(real)).toEqual([
+      { startMs: 120, endMs: 3760, speaker: "0", text: "Please send the quarterly project report to Kellera before Friday." },
+    ]);
+    expect(speakersIn(normalizeResult(real)).map((x) => x.key)).toEqual(["0"]);
   });
 });

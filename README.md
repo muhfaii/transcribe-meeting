@@ -5,7 +5,8 @@ Runs entirely on Cloudflare's **Free plan** (Workers, R2, D1, Access); speech-to
 
 **Status: Phase 5 of 5 (deployment prep)** — upload, Qwen transcription with speaker diarization, transcript page,
 speaker rename/merge, DOCX, glossary and AI correction are built and tested locally against fakes.
-Nothing has been deployed or run against the real Qwen API yet: follow [DEPLOY.md](DEPLOY.md).
+Not deployed yet (follow [DEPLOY.md](DEPLOY.md)). The Qwen request/result format, hotwords and the chat model were checked
+live; mixed-language audio and recordings over 2 hours have not been tested.
 See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per request).
 
 ## Local development
@@ -75,6 +76,8 @@ Logic lives in `src/shared/transcript.ts` (tested); the DOCX layout is in `src/w
   (`transcripts/<id>/segments.json`, status **Done**) only if every chunk succeeds. **Use original text** switches the
   preview and DOCX back to the uncorrected transcript at any time, and **Re-run** repeats the pass.
   It runs automatically the first time you open a recording that has "Fix names/terms with AI" ticked.
-- **Chat endpoint and model are UNVERIFIED defaults** (`<QWEN_BASE_URL>/compatible-mode/v1/chat/completions`, `qwen-plus`).
-  Check them with `DASHSCOPE_API_KEY=… scripts/qwen-chat-probe.sh`, and set `QWEN_CHAT_URL` / `QWEN_CHAT_MODEL`
-  (wrangler vars) if they differ. With `QWEN_MOCK=1` a fake reply is used instead.
+- **Chat endpoint and model** (`<QWEN_BASE_URL>/compatible-mode/v1/chat/completions`, `qwen-plus`) were checked live and work.
+  Override with `QWEN_CHAT_URL` / `QWEN_CHAT_MODEL` (wrangler vars) if needed; `scripts/qwen-chat-probe.sh` re-checks them.
+  With `QWEN_MOCK=1` a fake reply is used instead.
+- **What was verified live** (4 s sample clip): hotwords fix a misheard name; `input.context` did not change the transcript.
+  So the glossary (hotwords) and the AI correction carry the accuracy; the context box mainly feeds the AI correction.

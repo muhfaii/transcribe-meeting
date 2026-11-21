@@ -142,7 +142,7 @@ function updateContextCount() {
   const n = [...contextBox.value].length;
   contextCount.textContent =
     n > ASR_CONTEXT_MAX_CHARS
-      ? `Only the first ${ASR_CONTEXT_MAX_CHARS} characters go to the speech model (${n} typed).`
+      ? `The first ${ASR_CONTEXT_MAX_CHARS} characters go to the speech model as a hint; the AI correction uses all ${n}.`
       : `${n}/${ASR_CONTEXT_MAX_CHARS}`;
 }
 contextBox.addEventListener("input", updateContextCount);

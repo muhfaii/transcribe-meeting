@@ -76,10 +76,11 @@ npx wrangler secret put DASHSCOPE_API_KEY      # Singapore key, primary workspac
   if you will not reuse it.)
 
 ## 9. Real checks with the Qwen API (these are what I could not test)
-- [ ] `DASHSCOPE_API_KEY=… scripts/qwen-chat-probe.sh` — confirms the chat endpoint/model for AI correction
-  (set `QWEN_CHAT_URL` / `QWEN_CHAT_MODEL` in `wrangler.jsonc` if the defaults are wrong).
-- [ ] Run `scripts/qwen-probe.sh` (README, "Phase 0") on a short mixed-language clip; compare its output with
-  `src/shared/qwen-config.ts` and the transcript page.
+- Already verified live from the build sandbox (2026-11-21), so no need to repeat: the Qwen submit/poll/result format,
+  diarization output (`speaker_id`, times in ms), hotwords fixing a misheard name, and the chat endpoint + `qwen-plus`
+  (`scripts/qwen-chat-probe.sh` re-checks the last one).
+- [ ] Still untested: run `scripts/qwen-probe.sh` (README, "Phase 0") on a short **mixed Indonesian/English clip with 2+ speakers**
+  and check language switching and speaker separation on the transcript page.
 - [ ] **Short end-to-end:** upload a 2-3 minute m4a with two speakers. Expect: *Sending to Qwen…* → *Transcribing…* →
   *Ready* within a few minutes (the Cron job runs every 2 minutes). Open it: speakers separated, AI pass runs, names
   can be set, the DOCX opens in Word with `[hh:mm:ss] Name: text`.
@@ -89,8 +90,8 @@ npx wrangler secret put DASHSCOPE_API_KEY      # Singapore key, primary workspac
 ## 10. The 3-hour test (after step 9 passes)
 - [ ] Upload a ~3 h m4a on a normal connection. Watch: upload time, status, result size, whether diarization works
   beyond 2 hours (the docs advise ≤ 2 h; if it fails, the fallback is splitting — ask Claude to build it).
-- [ ] Check the cost in the Qwen console and R2 usage in the Cloudflare dashboard; estimate is ≈ $0.06 per 3 h
-  meeting for speech recognition (unverified token rate), plus the chat model for AI correction.
+- [ ] Check the cost in the Qwen console and R2 usage in the Cloudflare dashboard; measured ≈ 12 input tokens per audio second,
+  so ≈ $0.04 per 3 h meeting for speech recognition (extrapolated from a 4 s clip), plus the chat model for AI correction.
 
 ## 11. Cost guards (already in the code; review them)
 | Guard | Where | Default |
