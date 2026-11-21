@@ -3,38 +3,53 @@
 # wait for it, and print what the API really returns (parameters accepted, result
 # fields, time units, speaker/language labels). Needs: bash, curl, python3.
 #
-#   DASHSCOPE_API_KEY=sk-... scripts/qwen-probe.sh <https-audio-url> [params.json]
+#   DASHSCOPE_API_KEY=sk-... scripts/qwen-probe.sh <https-audio-url> [params.json] [context.json]
+#
+# Use a Singapore (ap-southeast-1) key from the PRIMARY workspace (hotwords are not
+# supported in sub-workspaces). Keys are region-specific.
 #
 # <https-audio-url> must be reachable by Alibaba (e.g. a presigned R2 URL, see
 # scripts/presign-get.mjs). Use a short, non-sensitive clip (1-3 min, 2+ speakers,
 # ideally mixed Indonesian/English) — you pay per audio second.
 #
-# params.json is the "parameters" object of the request. Default: diarization only.
-# Things worth trying one run at a time (an unknown name usually fails loudly):
-#   {"diarization_enabled": true, "speaker_count": 2}
-#   {"diarization_enabled": true, "language_hints": ["id", "en", "zh"]}
-#   {"diarization_enabled": true, "context": "Budi, Siti, Qwen, Jakarta"}
+# params.json is the "parameters" object. Default (from the docs):
+#   {"channel_id": [0], "diarization_enabled": true, "language_hints": ["id", "en", "zh"]}
+# Variants worth trying, one run each:
+#   {"channel_id": [0], "diarization_enabled": true}                      # no language hint
+#   {"channel_id": [0], "diarization_enabled": true, "language_hints": ["id", "en"]}
+#   {"channel_id": [0], "diarization_enabled": true, "vocabulary": {"Budi": 4, "Qwen": 4}}   # instant hotwords
 #
-# Env: DASHSCOPE_BASE_URL (default Singapore), QWEN_ASR_MODEL, POLL_SECONDS (10),
+# context.json (optional) becomes input.context: a message array, max 5 turns and
+# 400 characters of text per turn (extra is silently truncated), e.g.
+#   [{"role":"user","content":[{"type":"input_text","text":"Weekly sync with Budi and Siti about the Jakarta rollout."}]}]
+#
+# Docs notes: diarization works on MONO audio and should stay within 2 HOURS of audio
+# (longer may fail or time out) — test a long file separately if you need >2h.
+#
+# Env: DASHSCOPE_BASE_URL (default QwenCloud Singapore), QWEN_ASR_MODEL, POLL_SECONDS (10),
 #      MAX_WAIT_SECONDS (1800), OUT_DIR (./probe-out)
 set -euo pipefail
 
 URL="${1:?usage: qwen-probe.sh <https-audio-url> [params.json]}"
 PARAMS_FILE="${2:-}"
+CONTEXT_FILE="${3:-}"
 : "${DASHSCOPE_API_KEY:?set DASHSCOPE_API_KEY}"
-BASE="${DASHSCOPE_BASE_URL:-https://dashscope-intl.aliyuncs.com}"
+BASE="${DASHSCOPE_BASE_URL:-https://ap-southeast-1.maas.qwencloudapi.com}"
 MODEL="${QWEN_ASR_MODEL:-qwen-audio-3.1-asr-flash-filetrans}"
 POLL="${POLL_SECONDS:-10}"
 MAX_WAIT="${MAX_WAIT_SECONDS:-1800}"
 OUT="${OUT_DIR:-./probe-out}"
 mkdir -p "$OUT"
 
-if [[ -n "$PARAMS_FILE" ]]; then PARAMS="$(cat "$PARAMS_FILE")"; else PARAMS='{"diarization_enabled": true}'; fi
+if [[ -n "$PARAMS_FILE" ]]; then PARAMS="$(cat "$PARAMS_FILE")"; else PARAMS='{"channel_id": [0], "diarization_enabled": true, "language_hints": ["id", "en", "zh"]}'; fi
+if [[ -n "$CONTEXT_FILE" ]]; then CONTEXT="$(cat "$CONTEXT_FILE")"; else CONTEXT=''; fi
 
-BODY="$(MODEL="$MODEL" URL="$URL" PARAMS="$PARAMS" python3 - <<'PY'
+BODY="$(MODEL="$MODEL" URL="$URL" PARAMS="$PARAMS" CONTEXT="$CONTEXT" python3 - <<'PY'
 import json, os
-print(json.dumps({"model": os.environ["MODEL"],
-                  "input": {"file_urls": [os.environ["URL"]]},
+inp = {"file_urls": [os.environ["URL"]]}
+if os.environ["CONTEXT"].strip():
+    inp["context"] = json.loads(os.environ["CONTEXT"])
+print(json.dumps({"model": os.environ["MODEL"], "input": inp,
                   "parameters": json.loads(os.environ["PARAMS"])}))
 PY
 )"
@@ -87,6 +102,9 @@ import json, sys
 doc = json.load(open(sys.argv[1]))
 print("\n== Result structure ==")
 print("top-level keys:", list(doc.keys()))
+props = doc.get("properties") or {}
+print("properties:", json.dumps(props, ensure_ascii=False))
+dur = props.get("original_duration_in_milliseconds")
 ts = doc.get("transcripts") or []
 print("transcripts:", len(ts))
 for t in ts[:2]:
@@ -104,7 +122,7 @@ for t in ts[:2]:
                 print(f"  distinct '{key}' values:", sorted(vals)[:20])
         for key in ("begin_time", "end_time", "start", "end"):
             nums = [s[key] for s in sents if isinstance(s.get(key), (int, float))]
-            if nums: print(f"  {key}: min={min(nums)} max={max(nums)}  (last end ≈ audio length; compare to the real clip length to get the unit)")
+            if nums: print(f"  {key}: min={min(nums)} max={max(nums)}" + (f"  (reported audio duration: {dur} ms)" if dur else ""))
     for k in t:
         if k not in ("sentences",): print(f"  {k}:", json.dumps(t[k], ensure_ascii=False)[:300])
 PY

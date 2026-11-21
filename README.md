@@ -52,7 +52,8 @@ npx wrangler r2 object put transcribe-meeting-media/probe/clip.m4a --file clip.m
 # 2. Make a 1-hour download link Qwen can fetch
 export R2_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=…
 URL=$(node scripts/presign-get.mjs probe/clip.m4a)
-# 3. Run the probe (prints the raw request/response; see the script header for parameters to try)
+# 3. Run the probe with a Singapore key from the PRIMARY workspace (hotwords need it).
+#    Optional: scripts/qwen-probe.sh "$URL" params.json context.json (see the script header)
 DASHSCOPE_API_KEY=sk-… scripts/qwen-probe.sh "$URL"
 # 4. Clean up
 npx wrangler r2 object delete transcribe-meeting-media/probe/clip.m4a --remote
