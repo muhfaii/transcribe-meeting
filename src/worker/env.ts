@@ -10,6 +10,13 @@ export interface Env {
   QWEN_CHAT_URL?: string;
   QWEN_CHAT_MODEL?: string;
   QWEN_MOCK?: string;
+  /** "1" (default in wrangler.jsonc) = API requires a valid Cloudflare Access JWT; "0" = local dev only. */
+  REQUIRE_ACCESS?: string;
+  /** e.g. myteam.cloudflareaccess.com */
+  ACCESS_TEAM_DOMAIN?: string;
+  /** The Access application's AUD tag. */
+  ACCESS_AUD?: string;
+  MAX_JOBS_PER_DAY?: string;
   DASHSCOPE_API_KEY?: string;
   // Secrets. When absent (local dev), parts are uploaded through the Worker instead.
   R2_ACCOUNT_ID?: string;

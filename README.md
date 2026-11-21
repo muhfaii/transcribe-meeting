@@ -3,10 +3,9 @@
 Upload a long meeting recording (m4a, 3+ hours), get a speaker-labelled DOCX.
 Runs entirely on Cloudflare's **Free plan** (Workers, R2, D1, Access); speech-to-text is the Qwen API.
 
-**Status: Phase 4 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
-status checked every 2 minutes by a Cron Trigger, raw transcript saved to R2, a transcript page with
-speaker renaming/merging and DOCX download, a shared glossary, and an optional AI correction pass.
-Deployment hardening (Access, lifecycle rules, real-API checks) is what's left.
+**Status: Phase 5 of 5 (deployment prep)** — upload, Qwen transcription with speaker diarization, transcript page,
+speaker rename/merge, DOCX, glossary and AI correction are built and tested locally against fakes.
+Nothing has been deployed or run against the real Qwen API yet: follow [DEPLOY.md](DEPLOY.md).
 See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per request).
 
 ## Local development
@@ -15,36 +14,18 @@ npm install
 npm run db:migrate:local
 npm run dev          # builds the web bundle, then runs wrangler dev on :8787
 # Fake Qwen (no API key needed; a job "finishes" 5 s after upload) + manual Cron trigger:
-npx wrangler dev --test-scheduled --var QWEN_MOCK:1
+npx wrangler dev --test-scheduled --var REQUIRE_ACCESS:0 --var QWEN_MOCK:1
 curl 'http://localhost:8787/__scheduled?cron=*/2+*+*+*+*'
 npm test && npm run typecheck
 ```
 Without R2 credentials, parts are uploaded through the Worker into a local R2 simulation
 (`PUT /api/uploads/part`, disabled automatically once credentials exist). This path is for dev only.
 
-## Deploy (Cloudflare dashboard + wrangler)
-1. **R2 bucket**: create `transcribe-meeting-media` (or change `bucket_name` and `R2_BUCKET` in `wrangler.jsonc`).
-2. **Bucket CORS**: put your site's origin (e.g. `https://transcribe.example.com`) in `scripts/r2-cors.json`, then
-   `npx wrangler r2 bucket cors set transcribe-meeting-media --file scripts/r2-cors.json`.
-   `ExposeHeaders: ["ETag"]` is required, or the browser cannot finish multipart uploads.
-3. **Lifecycle rules** (keeps storage inside the 10 GB free tier):
-   ```bash
-   npx wrangler r2 bucket lifecycle add transcribe-meeting-media delete-uploads uploads/ --expire-days 1
-   npx wrangler r2 bucket lifecycle add transcribe-meeting-media abort-multipart "" --abort-multipart-days 1
-   ```
-   Cloudflare cleans up in batches, so an upload can live up to about two days.
-4. **R2 API token**: R2 → Manage API tokens → *Object Read & Write*, scoped to this bucket. Then:
-   ```bash
-   npx wrangler secret put R2_ACCOUNT_ID
-   npx wrangler secret put R2_ACCESS_KEY_ID
-   npx wrangler secret put R2_SECRET_ACCESS_KEY
-   npx wrangler secret put DASHSCOPE_API_KEY   # Singapore key, PRIMARY workspace (hotwords need it)
-   ```
-5. **D1**: `npx wrangler d1 create transcribe-meeting`, paste the id into `wrangler.jsonc`,
-   then `npm run db:migrate:remote`.
-6. `npm run deploy`.
-7. **Login**: add a Cloudflare Access application (free up to 50 users) for the whole hostname.
-   The app has no accounts of its own.
+## Deploy
+See **[DEPLOY.md](DEPLOY.md)**: a step-by-step checklist (bucket, lifecycle rules, D1, secrets, Cloudflare Access, CORS),
+`scripts/smoke.sh` for a post-deploy check, cost guards, and rollback.
+`REQUIRE_ACCESS` defaults to on in `wrangler.jsonc`: without `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` the API refuses every request.
+`npm run dev` turns it off for local use.
 
 ## Limits
 - m4a only, 1 GiB max (`MAX_UPLOAD_BYTES`), 50 MiB parts, 3 uploaded in parallel.

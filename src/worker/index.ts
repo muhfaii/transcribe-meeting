@@ -10,6 +10,7 @@ import {
   validateUpload,
 } from "../shared/upload-rules";
 import type { CompletedPart, SignedPart, UploadInit } from "../shared/types";
+import { checkAccess } from "./access";
 import { pollRunningJobs, rawKey, segmentsKey, submitJob } from "./pipeline";
 import { chatComplete } from "./qwen";
 import { MAX_HOTWORDS, validateHotword } from "../shared/qwen-config";
@@ -22,6 +23,13 @@ import {
 } from "../shared/correction";
 
 const app = new Hono<{ Bindings: Env }>();
+
+// Every API route requires a valid Cloudflare Access login (fail-closed; see access.ts).
+app.use("/api/*", async (c, next) => {
+  const access = await checkAccess(c.env, c.req.raw);
+  if (access.enforce && !access.ok) return c.json({ error: access.message }, access.status);
+  await next();
+});
 
 const maxBytes = (env: Env) => Number(env.MAX_UPLOAD_BYTES) || DEFAULT_MAX_UPLOAD_BYTES;
 
@@ -162,6 +170,15 @@ app.post("/api/jobs", async (c) => {
   if (!isUploadKey(r2Key)) return c.json({ error: "Invalid upload." }, 400);
   const head = await c.env.MEDIA.head(r2Key);
   if (!head) return c.json({ error: "Upload not found." }, 404);
+
+  // Spend guard: every recording costs speech-model (and optionally chat) usage.
+  const cap = Number(c.env.MAX_JOBS_PER_DAY) || 30;
+  const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE created_at > ?")
+    .bind(Date.now() - 24 * 3600 * 1000)
+    .first<{ n: number }>();
+  if ((recent?.n ?? 0) >= cap) {
+    return c.json({ error: `Daily limit reached (${cap} recordings per 24 hours). Try again later or raise MAX_JOBS_PER_DAY.` }, 429);
+  }
 
   const fileName = String(body.fileName ?? "recording.m4a").slice(0, 200);
   const title = String(body.title ?? "").trim().slice(0, 200) || fileName.replace(/\.m4a$/i, "");
