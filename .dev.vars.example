@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local dev. Leave the R2_* values out locally:
+# without them, uploads go through the Worker into a local R2 simulation.
+# R2_ACCOUNT_ID=
+# R2_ACCESS_KEY_ID=
+# R2_SECRET_ACCESS_KEY=

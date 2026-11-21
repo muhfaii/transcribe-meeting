@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Transcriber</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1><a href="#/" class="home">Meeting Transcriber</a></h1>
+      <nav><a href="#/">Recordings</a> · <a href="#/glossary">Glossary</a></nav>
+    </header>
+
+    <div id="view-main">
+      <form id="upload-form">
+        <label class="drop" for="file">
+          <input id="file" type="file" accept=".m4a,audio/mp4,audio/x-m4a" required />
+          <span id="file-label">Choose an .m4a recording (up to 1 GB, 3+ hours)</span>
+        </label>
+
+        <label>Title
+          <input id="title" type="text" maxlength="200" placeholder="Weekly sync" />
+        </label>
+
+        <details id="context-box">
+          <summary>Optional context <small>(agenda, who is meeting — helps the AI correction)</small></summary>
+          <label>Context
+            <textarea id="context" rows="3" maxlength="4000"></textarea>
+            <small id="context-count"></small>
+          </label>
+        </details>
+
+        <div class="row">
+          <label>Speakers <small>(blank = auto)</small>
+            <input id="speakers" type="number" min="1" max="20" />
+          </label>
+          <label class="check">
+            <input id="correction" type="checkbox" checked /> Fix names/terms with AI
+          </label>
+        </div>
+
+        <button id="submit" type="submit">Upload &amp; transcribe</button>
+        <div id="progress" hidden>
+          <progress id="bar" max="100" value="0"></progress>
+          <span id="progress-text"></span>
+        </div>
+        <p id="message" role="status"></p>
+      </form>
+
+      <h2>Recordings</h2>
+      <table id="jobs">
+        <thead><tr><th>Title</th><th>Size</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" hidden>No recordings yet.</p>
+    </div>
+
+    <section id="view-glossary" hidden>
+      <h2>Glossary</h2>
+      <p class="muted">Names, products and jargon. They are sent to the speech model as hotwords and used by the AI correction as reference spellings. Applies to every recording.</p>
+      <form id="glossary-form" class="inline-form">
+        <input id="glossary-term" type="text" maxlength="100" placeholder="Term, e.g. Kelyra" required />
+        <input id="glossary-note" type="text" maxlength="200" placeholder="Note (optional)" />
+        <button type="submit">Add</button>
+      </form>
+      <p id="glossary-message" role="status"></p>
+      <p id="glossary-count" class="muted"></p>
+      <table id="glossary-table">
+        <thead><tr><th>Term</th><th>Note</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="glossary-empty" class="muted" hidden>No terms yet.</p>
+    </section>
+
+    <section id="view-job" hidden>
+      <p><a href="#/">← All recordings</a></p>
+      <h2 id="job-title"></h2>
+      <p id="job-meta" class="muted"></p>
+      <p id="job-status" role="status"></p>
+
+      <div id="job-body" hidden>
+        <h3>Speakers</h3>
+        <p class="muted">Type a name for each speaker. Give two speakers the same name to merge them.</p>
+        <div id="speaker-list"></div>
+        <p id="save-note" class="muted" role="status"></p>
+
+        <h3>AI correction</h3>
+        <p id="ai-status" class="muted" role="status"></p>
+        <progress id="ai-bar" max="1" value="0" hidden></progress>
+        <div class="row-actions">
+          <button id="ai-run" type="button" class="secondary">Improve with AI</button>
+          <button id="ai-cancel" type="button" class="secondary" hidden>Cancel</button>
+          <label class="check" id="original-wrap" hidden>
+            <input id="use-original" type="checkbox" /> Use original text
+          </label>
+        </div>
+
+        <button id="download" type="button">Download DOCX</button>
+
+        <h3>Preview</h3>
+        <div id="preview"></div>
+        <p id="preview-note" class="muted"></p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./app.ts"></script>
+</body>
+</html>
