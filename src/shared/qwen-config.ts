@@ -4,6 +4,11 @@
 
 export const QWEN_DEFAULT_BASE_URL = "https://ap-southeast-1.maas.qwencloudapi.com";
 export const QWEN_DEFAULT_MODEL = "qwen-audio-3.1-asr-flash-filetrans";
+// Chat model for the optional AI correction pass.
+// UNVERIFIED: neither the endpoint path nor the model name came from the docs you pasted.
+// Override with the QWEN_CHAT_URL / QWEN_CHAT_MODEL vars; check with scripts/qwen-chat-probe.sh.
+export const QWEN_DEFAULT_CHAT_MODEL = "qwen-plus";
+export const QWEN_CHAT_PATH = "/compatible-mode/v1/chat/completions";
 export const SUBMIT_PATH = "/api/v1/services/audio/asr/transcription";
 export const taskPath = (taskId: string) => `/api/v1/tasks/${encodeURIComponent(taskId)}`;
 

@@ -1,6 +1,7 @@
 import type { Job } from "../shared/types";
 import { api, uploadFile } from "./upload";
 import { leaveJob, showJob } from "./job";
+import { initGlossary, showGlossary } from "./glossary";
 import { ASR_CONTEXT_MAX_CHARS } from "../shared/qwen-config";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -147,15 +148,20 @@ function updateContextCount() {
 contextBox.addEventListener("input", updateContextCount);
 updateContextCount();
 
-// ---- tiny router: #/ = recordings, #/job/<id> = transcript ----
+// ---- tiny router: #/ = recordings, #/job/<id> = transcript, #/glossary ----
 const viewMain = $("view-main");
 const viewJob = $("view-job");
+const viewGlossary = $("view-glossary");
+initGlossary();
 function route() {
-  const m = location.hash.match(/^#\/job\/([0-9a-f-]{36})$/);
-  viewMain.hidden = Boolean(m);
-  viewJob.hidden = !m;
-  if (m) void showJob(m[1]);
+  const job = location.hash.match(/^#\/job\/([0-9a-f-]{36})$/);
+  const glossary = location.hash === "#/glossary";
+  viewMain.hidden = Boolean(job) || glossary;
+  viewJob.hidden = !job;
+  viewGlossary.hidden = !glossary;
+  if (job) void showJob(job[1]);
   else leaveJob();
+  if (glossary) void showGlossary();
 }
 window.addEventListener("hashchange", route);
 route();

@@ -7,6 +7,8 @@ export interface Env {
   QWEN_BASE_URL?: string;
   QWEN_ASR_MODEL?: string;
   /** "1" = fake Qwen (local dev / tests). */
+  QWEN_CHAT_URL?: string;
+  QWEN_CHAT_MODEL?: string;
   QWEN_MOCK?: string;
   DASHSCOPE_API_KEY?: string;
   // Secrets. When absent (local dev), parts are uploaded through the Worker instead.

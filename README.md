@@ -3,10 +3,10 @@
 Upload a long meeting recording (m4a, 3+ hours), get a speaker-labelled DOCX.
 Runs entirely on Cloudflare's **Free plan** (Workers, R2, D1, Access); speech-to-text is the Qwen API.
 
-**Status: Phase 3 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
-status checked every 2 minutes by a Cron Trigger, raw transcript saved to R2, and a transcript page with
-speaker renaming/merging and DOCX download (built in the browser).
-The glossary UI, AI correction pass and deployment hardening come next.
+**Status: Phase 4 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
+status checked every 2 minutes by a Cron Trigger, raw transcript saved to R2, a transcript page with
+speaker renaming/merging and DOCX download, a shared glossary, and an optional AI correction pass.
+Deployment hardening (Access, lifecycle rules, real-API checks) is what's left.
 See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per request).
 
 ## Local development
@@ -82,3 +82,18 @@ speaker paragraphs (new paragraph on speaker change, a pause over 3 s, or ~90 s 
 each speaker (saved per recording; two speakers with the same name are merged). **Download DOCX** builds
 `[hh:mm:ss] Name: text` paragraphs locally, so the Worker does no heavy work.
 Logic lives in `src/shared/transcript.ts` (tested); the DOCX layout is in `src/web/docx.ts`.
+
+## Glossary and AI correction
+- **Glossary** (`#/glossary`): names and jargon shared by every recording. They are sent to the speech model as
+  instant hotwords (`parameters.vocabulary`) and given to the AI correction as reference spellings.
+  The model's text rules are checked as you type (non-ASCII ≤ 15 characters, ASCII ≤ 7 words, ≤ 2000 terms).
+- **AI correction**: the browser sends the transcript in chunks of ≤ 60 paragraphs to
+  `POST /api/jobs/:id/correct`; the Worker builds the prompt (meeting context + glossary) and calls a Qwen chat model.
+  Replies are validated per paragraph (JSON only, known indexes, no big length changes, no Chinese↔Latin
+  swaps); anything doubtful keeps the original text. It is all-or-nothing: the result is saved
+  (`transcripts/<id>/segments.json`, status **Done**) only if every chunk succeeds. **Use original text** switches the
+  preview and DOCX back to the uncorrected transcript at any time, and **Re-run** repeats the pass.
+  It runs automatically the first time you open a recording that has "Fix names/terms with AI" ticked.
+- **Chat endpoint and model are UNVERIFIED defaults** (`<QWEN_BASE_URL>/compatible-mode/v1/chat/completions`, `qwen-plus`).
+  Check them with `DASHSCOPE_API_KEY=… scripts/qwen-chat-probe.sh`, and set `QWEN_CHAT_URL` / `QWEN_CHAT_MODEL`
+  (wrangler vars) if they differ. With `QWEN_MOCK=1` a fake reply is used instead.

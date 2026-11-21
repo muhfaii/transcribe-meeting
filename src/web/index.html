@@ -8,7 +8,10 @@
 </head>
 <body>
   <main>
-    <h1><a href="#/" class="home">Meeting Transcriber</a></h1>
+    <header>
+      <h1><a href="#/" class="home">Meeting Transcriber</a></h1>
+      <nav><a href="#/">Recordings</a> · <a href="#/glossary">Glossary</a></nav>
+    </header>
 
     <div id="view-main">
       <form id="upload-form">
@@ -51,6 +54,23 @@
       <p id="empty" hidden>No recordings yet.</p>
     </div>
 
+    <section id="view-glossary" hidden>
+      <h2>Glossary</h2>
+      <p class="muted">Names, products and jargon. They are sent to the speech model as hotwords and used by the AI correction as reference spellings. Applies to every recording.</p>
+      <form id="glossary-form" class="inline-form">
+        <input id="glossary-term" type="text" maxlength="100" placeholder="Term, e.g. Kelyra" required />
+        <input id="glossary-note" type="text" maxlength="200" placeholder="Note (optional)" />
+        <button type="submit">Add</button>
+      </form>
+      <p id="glossary-message" role="status"></p>
+      <p id="glossary-count" class="muted"></p>
+      <table id="glossary-table">
+        <thead><tr><th>Term</th><th>Note</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="glossary-empty" class="muted" hidden>No terms yet.</p>
+    </section>
+
     <section id="view-job" hidden>
       <p><a href="#/">← All recordings</a></p>
       <h2 id="job-title"></h2>
@@ -62,6 +82,17 @@
         <p class="muted">Type a name for each speaker. Give two speakers the same name to merge them.</p>
         <div id="speaker-list"></div>
         <p id="save-note" class="muted" role="status"></p>
+
+        <h3>AI correction</h3>
+        <p id="ai-status" class="muted" role="status"></p>
+        <progress id="ai-bar" max="1" value="0" hidden></progress>
+        <div class="row-actions">
+          <button id="ai-run" type="button" class="secondary">Improve with AI</button>
+          <button id="ai-cancel" type="button" class="secondary" hidden>Cancel</button>
+          <label class="check" id="original-wrap" hidden>
+            <input id="use-original" type="checkbox" /> Use original text
+          </label>
+        </div>
 
         <button id="download" type="button">Download DOCX</button>
 

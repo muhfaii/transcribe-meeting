@@ -34,3 +34,11 @@ export const MOCK_RESULT = {
     },
   ],
 };
+
+/** Fake chat reply for the correction pass: capitalises "weekly sync" so the change is visible. */
+export function mockCorrectionReply(userContent: string): string {
+  const marker = "Transcript items (JSON):\n";
+  const at = userContent.indexOf(marker);
+  const items = at >= 0 ? (JSON.parse(userContent.slice(at + marker.length)) as { i: number; text: string }[]) : [];
+  return JSON.stringify({ items: items.map((it) => ({ i: it.i, text: it.text.replace(/weekly sync/gi, "Weekly Sync") })) });
+}

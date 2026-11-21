@@ -10,7 +10,16 @@ import {
   validateUpload,
 } from "../shared/upload-rules";
 import type { CompletedPart, SignedPart, UploadInit } from "../shared/types";
-import { pollRunningJobs, rawKey, submitJob } from "./pipeline";
+import { pollRunningJobs, rawKey, segmentsKey, submitJob } from "./pipeline";
+import { chatComplete } from "./qwen";
+import { MAX_HOTWORDS, validateHotword } from "../shared/qwen-config";
+import {
+  MAX_CHARS_PER_REQUEST,
+  MAX_ITEMS_PER_REQUEST,
+  buildCorrectionMessages,
+  parseCorrectionResponse,
+  type CorrectionItem,
+} from "../shared/correction";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -238,8 +247,81 @@ app.delete("/api/jobs/:id", async (c) => {
     .bind(c.req.param("id"))
     .first<{ r2_key: string }>();
   if (!row) return c.json({ error: "Not found." }, 404);
-  await c.env.MEDIA.delete([row.r2_key, rawKey(c.req.param("id"))]);
+  await c.env.MEDIA.delete([row.r2_key, rawKey(c.req.param("id")), segmentsKey(c.req.param("id"))]);
   await c.env.DB.prepare("DELETE FROM jobs WHERE id = ?").bind(c.req.param("id")).run();
+  return c.json({ ok: true });
+});
+
+// ---- Corrected transcript (browser-produced; the Worker only stores it) ----
+const MAX_RESULT_BYTES = 5 * 1024 * 1024;
+
+app.get("/api/jobs/:id/result", async (c) => {
+  const object = await c.env.MEDIA.get(segmentsKey(c.req.param("id")));
+  if (!object) return c.json({ error: "No corrected transcript." }, 404);
+  return new Response(object.body, { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+});
+
+app.put("/api/jobs/:id/result", async (c) => {
+  const id = c.req.param("id");
+  const length = Number(c.req.header("content-length"));
+  if (!Number.isFinite(length) || length <= 0 || length > MAX_RESULT_BYTES) return c.json({ error: "Invalid size." }, 413);
+  const job = await c.env.DB.prepare("SELECT status FROM jobs WHERE id = ?").bind(id).first<{ status: string }>();
+  if (!job) return c.json({ error: "Not found." }, 404);
+  if (job.status !== "transcribed" && job.status !== "done") return c.json({ error: "Transcript is not ready." }, 409);
+  await c.env.MEDIA.put(segmentsKey(id), c.req.raw.body!, { httpMetadata: { contentType: "application/json" } });
+  await c.env.DB.prepare("UPDATE jobs SET status = 'done', updated_at = ? WHERE id = ?").bind(Date.now(), id).run();
+  return c.json({ ok: true });
+});
+
+// ---- AI correction: the browser sends small chunks; the prompt is built here, never by the client ----
+app.post("/api/jobs/:id/correct", async (c) => {
+  const { items } = await readJson<{ items: CorrectionItem[] }>(c);
+  const valid =
+    Array.isArray(items) &&
+    items.length > 0 &&
+    items.length <= MAX_ITEMS_PER_REQUEST &&
+    items.every((it) => Number.isInteger(it?.i) && it.i >= 0 && typeof it.text === "string");
+  if (!valid) return c.json({ error: "Invalid items." }, 400);
+  if (items!.reduce((n, it) => n + it.text.length, 0) > MAX_CHARS_PER_REQUEST) return c.json({ error: "Chunk too large." }, 413);
+
+  const job = await c.env.DB.prepare("SELECT context FROM jobs WHERE id = ?")
+    .bind(c.req.param("id"))
+    .first<{ context: string }>();
+  if (!job) return c.json({ error: "Not found." }, 404);
+  const { results } = await c.env.DB.prepare("SELECT term, note FROM glossary ORDER BY id LIMIT 200").all<{ term: string; note: string }>();
+
+  try {
+    const reply = await chatComplete(c.env, buildCorrectionMessages({ context: job.context, terms: results, items: items! }));
+    return c.json({ items: parseCorrectionResponse(reply, items!) });
+  } catch (e) {
+    return c.json({ error: (e instanceof Error ? e.message : "Correction failed.").slice(0, 300) }, 502);
+  }
+});
+
+// ---- Glossary (shared by every job: ASR hotwords + correction reference) ----
+app.get("/api/glossary", async (c) => {
+  const { results } = await c.env.DB.prepare("SELECT id, term, note FROM glossary ORDER BY term COLLATE NOCASE").all();
+  return c.json({ terms: results });
+});
+
+app.post("/api/glossary", async (c) => {
+  const body = await readJson<{ term: string; note: string }>(c);
+  const term = String(body.term ?? "").trim();
+  const note = String(body.note ?? "").trim().slice(0, 200);
+  const problem = validateHotword(term);
+  if (problem) return c.json({ error: problem }, 400);
+  const count = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM glossary").first<{ n: number }>();
+  if ((count?.n ?? 0) >= MAX_HOTWORDS) return c.json({ error: `The glossary is full (${MAX_HOTWORDS} terms).` }, 409);
+  try {
+    const res = await c.env.DB.prepare("INSERT INTO glossary (term, note) VALUES (?, ?)").bind(term, note).run();
+    return c.json({ id: res.meta.last_row_id, term, note }, 201);
+  } catch {
+    return c.json({ error: "That term is already in the glossary." }, 409);
+  }
+});
+
+app.delete("/api/glossary/:id", async (c) => {
+  await c.env.DB.prepare("DELETE FROM glossary WHERE id = ?").bind(c.req.param("id")).run();
   return c.json({ ok: true });
 });
 

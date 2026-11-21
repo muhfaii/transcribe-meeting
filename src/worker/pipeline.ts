@@ -7,6 +7,7 @@ const MAX_POLLS_PER_RUN = 8; // keeps each Cron run under the Free plan's subreq
 const GIVE_UP_AFTER_MS = 12 * 60 * 60 * 1000;
 
 export const rawKey = (jobId: string) => `transcripts/${jobId}/raw.json`;
+export const segmentsKey = (jobId: string) => `transcripts/${jobId}/segments.json`;
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 

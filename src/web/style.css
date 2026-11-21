@@ -46,3 +46,12 @@ h3 { font-size: 1rem; margin: 24px 0 4px; }
 .turn .time { color: var(--muted); font-size: .8rem; }
 #download { margin-top: 12px; }
 #view-main[hidden], #view-job[hidden] { display: none; }
+header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+header h1 { margin: 0 0 16px; }
+nav { font-size: .9rem; color: var(--muted); }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline-form input { flex: 1 1 160px; width: auto; }
+#glossary-message.error { color: var(--danger); }
+button.secondary { background: none; color: var(--accent); border: 1px solid var(--accent); }
+.row-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0 16px; }
+#view-glossary[hidden] { display: none; }
