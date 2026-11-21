@@ -10,6 +10,7 @@ export interface Job {
   speaker_count_hint: number | null;
   context: string;
   use_correction: number;
+  usage: string | null;
   created_at: number;
   updated_at: number;
 }

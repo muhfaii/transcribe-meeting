@@ -35,3 +35,13 @@ export async function presignPartUrl(
   });
   return signed.url;
 }
+
+/** Presigned GET URL so Qwen can download the uploaded audio. */
+export async function presignGetUrl(
+  client: AwsClient,
+  opts: { accountId: string; bucket: string; key: string; expiresIn?: number },
+): Promise<string> {
+  const url = new URL(`https://${opts.accountId}.r2.cloudflarestorage.com/${opts.bucket}/${opts.key}`);
+  url.searchParams.set("X-Amz-Expires", String(opts.expiresIn ?? 86400));
+  return (await client.sign(new Request(url), { aws: { signQuery: true } })).url;
+}

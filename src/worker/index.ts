@@ -10,6 +10,7 @@ import {
   validateUpload,
 } from "../shared/upload-rules";
 import type { CompletedPart, SignedPart, UploadInit } from "../shared/types";
+import { pollRunningJobs, rawKey, submitJob } from "./pipeline";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -137,7 +138,7 @@ app.post("/api/uploads/abort", async (c) => {
 // ---- Jobs ----
 
 const JOB_COLUMNS =
-  "id, title, status, error, file_name, size, speaker_count_hint, context, use_correction, created_at, updated_at";
+  "id, title, status, error, file_name, size, speaker_count_hint, context, use_correction, usage, created_at, updated_at";
 
 app.post("/api/jobs", async (c) => {
   const body = await readJson<{
@@ -167,7 +168,25 @@ app.post("/api/jobs", async (c) => {
   )
     .bind(id, title, r2Key, fileName, head.size, speakerCount, context, body.correction === false ? 0 : 1, now, now)
     .run();
+  await submitJob(c.env, id); // sends the audio to Qwen; a failure is recorded on the job
   return c.json({ id }, 201);
+});
+
+app.post("/api/jobs/:id/retry", async (c) => {
+  const id = c.req.param("id");
+  const job = await c.env.DB.prepare("SELECT status FROM jobs WHERE id = ?").bind(id).first<{ status: string }>();
+  if (!job) return c.json({ error: "Not found." }, 404);
+  if (job.status !== "failed") return c.json({ error: "Only failed jobs can be retried." }, 409);
+  await submitJob(c.env, id);
+  return c.json({ ok: true });
+});
+
+app.get("/api/jobs/:id/raw", async (c) => {
+  const object = await c.env.MEDIA.get(rawKey(c.req.param("id")));
+  if (!object) return c.json({ error: "No transcript yet." }, 404);
+  return new Response(object.body, {
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
 });
 
 app.get("/api/jobs", async (c) => {
@@ -189,11 +208,16 @@ app.delete("/api/jobs/:id", async (c) => {
     .bind(c.req.param("id"))
     .first<{ r2_key: string }>();
   if (!row) return c.json({ error: "Not found." }, 404);
-  await c.env.MEDIA.delete(row.r2_key);
+  await c.env.MEDIA.delete([row.r2_key, rawKey(c.req.param("id"))]);
   await c.env.DB.prepare("DELETE FROM jobs WHERE id = ?").bind(c.req.param("id")).run();
   return c.json({ ok: true });
 });
 
 app.notFound((c) => c.json({ error: "Not found." }, 404));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(pollRunningJobs(env));
+  },
+};

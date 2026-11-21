@@ -19,6 +19,9 @@
   ],
   "vars": {
     "R2_BUCKET": "transcribe-meeting-media",
-    "MAX_UPLOAD_BYTES": "1073741824"
-  }
+    "MAX_UPLOAD_BYTES": "1073741824",
+    "QWEN_BASE_URL": "https://ap-southeast-1.maas.qwencloudapi.com",
+    "QWEN_ASR_MODEL": "qwen-audio-3.1-asr-flash-filetrans"
+  },
+  "triggers": { "crons": ["*/2 * * * *"] }
 }

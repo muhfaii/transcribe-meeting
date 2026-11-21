@@ -33,3 +33,5 @@ table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
 td.err { color: var(--danger); }
 @media (max-width: 560px) { th:nth-child(4), td:nth-child(4) { display: none; } }
+.why { font-size: .8rem; font-weight: 400; max-width: 28ch; overflow-wrap: anywhere; }
+button.retry { color: var(--accent); }

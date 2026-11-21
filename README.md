@@ -3,8 +3,9 @@
 Upload a long meeting recording (m4a, 3+ hours), get a speaker-labelled DOCX.
 Runs entirely on Cloudflare's **Free plan** (Workers, R2, D1, Access); speech-to-text is the Qwen API.
 
-**Status: Phase 1 of 5** — project scaffold and resumable m4a upload (browser → R2 multipart) with a job list.
-Transcription, speaker rename, DOCX export, glossary/context and deployment hardening come next.
+**Status: Phase 2 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
+status checked every 2 minutes by a Cron Trigger, and the raw transcript saved to R2.
+The transcript viewer, speaker rename, DOCX export, glossary UI and deployment hardening come next.
 See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per request).
 
 ## Local development
@@ -12,6 +13,9 @@ See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per req
 npm install
 npm run db:migrate:local
 npm run dev          # builds the web bundle, then runs wrangler dev on :8787
+# Fake Qwen (no API key needed; a job "finishes" 5 s after upload) + manual Cron trigger:
+npx wrangler dev --test-scheduled --var QWEN_MOCK:1
+curl 'http://localhost:8787/__scheduled?cron=*/2+*+*+*+*'
 npm test && npm run typecheck
 ```
 Without R2 credentials, parts are uploaded through the Worker into a local R2 simulation
@@ -33,6 +37,7 @@ Without R2 credentials, parts are uploaded through the Worker into a local R2 si
    npx wrangler secret put R2_ACCOUNT_ID
    npx wrangler secret put R2_ACCESS_KEY_ID
    npx wrangler secret put R2_SECRET_ACCESS_KEY
+   npx wrangler secret put DASHSCOPE_API_KEY   # Singapore key, PRIMARY workspace (hotwords need it)
    ```
 5. **D1**: `npx wrangler d1 create transcribe-meeting`, paste the id into `wrangler.jsonc`,
    then `npm run db:migrate:remote`.
@@ -59,3 +64,13 @@ DASHSCOPE_API_KEY=sk-… scripts/qwen-probe.sh "$URL"
 npx wrangler r2 object delete transcribe-meeting-media/probe/clip.m4a --remote
 ```
 Paste the "Result structure" section of the output back so `src/shared/qwen-config.ts` can be filled in.
+
+## How a job runs
+1. Upload finishes → `POST /api/jobs` stores the job and sends it to Qwen
+   (`qwen-audio-3.1-asr-flash-filetrans`) with a 24 h presigned link to the audio.
+   Context (first 400 characters) goes in `input.context`; glossary terms go in `parameters.vocabulary`.
+2. A Cron Trigger (every 2 min) checks running jobs. When Qwen finishes, the result JSON is streamed
+   to `transcripts/<job id>/raw.json` in R2 untouched, and the job becomes **Ready to review**
+   (`GET /api/jobs/:id/raw`). Failed jobs show the reason and a **Retry** button.
+3. All Qwen request/response details live in `src/shared/qwen-config.ts`.
+   Not sent yet: a speaker-count hint (the parameter name is not in the docs; stored for later).

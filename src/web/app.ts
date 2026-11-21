@@ -24,7 +24,7 @@ function say(text: string, isError = false) {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  uploaded: "Uploaded",
+  uploaded: "Sending to Qwen…",
   running: "Transcribing…",
   transcribed: "Ready to review",
   done: "Done",
@@ -48,10 +48,28 @@ async function loadJobs() {
     for (const [i, text] of cells.entries()) {
       const td = document.createElement("td");
       td.textContent = text; // textContent: titles are user input
-      if (i === 2 && job.error) td.title = job.error, td.className = "err";
+      if (i === 2 && job.error) {
+        td.className = "err";
+        const why = document.createElement("div");
+        why.className = "why";
+        why.textContent = job.error;
+        td.append(why);
+      }
       tr.append(td);
     }
     const td = document.createElement("td");
+    if (job.status === "failed") {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "link retry";
+      retry.textContent = "Retry";
+      retry.onclick = async () => {
+        retry.disabled = true;
+        await fetch(`/api/jobs/${job.id}/retry`, { method: "POST" });
+        await loadJobs();
+      };
+      td.append(retry, " ");
+    }
     const del = document.createElement("button");
     del.type = "button";
     del.className = "link";
