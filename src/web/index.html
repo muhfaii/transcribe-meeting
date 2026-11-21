@@ -8,45 +8,68 @@
 </head>
 <body>
   <main>
-    <h1>Meeting Transcriber</h1>
+    <h1><a href="#/" class="home">Meeting Transcriber</a></h1>
 
-    <form id="upload-form">
-      <label class="drop" for="file">
-        <input id="file" type="file" accept=".m4a,audio/mp4,audio/x-m4a" required />
-        <span id="file-label">Choose an .m4a recording (up to 1 GB, 3+ hours)</span>
-      </label>
-
-      <label>Title
-        <input id="title" type="text" maxlength="200" placeholder="Weekly sync" />
-      </label>
-
-      <label>Context <small>(agenda, names, jargon — improves accuracy)</small>
-        <textarea id="context" rows="3" maxlength="4000"></textarea>
-      </label>
-
-      <div class="row">
-        <label>Speakers <small>(blank = auto)</small>
-          <input id="speakers" type="number" min="1" max="20" />
+    <div id="view-main">
+      <form id="upload-form">
+        <label class="drop" for="file">
+          <input id="file" type="file" accept=".m4a,audio/mp4,audio/x-m4a" required />
+          <span id="file-label">Choose an .m4a recording (up to 1 GB, 3+ hours)</span>
         </label>
-        <label class="check">
-          <input id="correction" type="checkbox" checked /> Fix names/terms with AI
+
+        <label>Title
+          <input id="title" type="text" maxlength="200" placeholder="Weekly sync" />
         </label>
-      </div>
 
-      <button id="submit" type="submit">Upload &amp; transcribe</button>
-      <div id="progress" hidden>
-        <progress id="bar" max="100" value="0"></progress>
-        <span id="progress-text"></span>
-      </div>
-      <p id="message" role="status"></p>
-    </form>
+        <label>Context <small>(agenda, names, jargon — improves accuracy)</small>
+          <textarea id="context" rows="3" maxlength="4000"></textarea>
+          <small id="context-count"></small>
+        </label>
 
-    <h2>Recordings</h2>
-    <table id="jobs">
-      <thead><tr><th>Title</th><th>Size</th><th>Status</th><th>Created</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <p id="empty" hidden>No recordings yet.</p>
+        <div class="row">
+          <label>Speakers <small>(blank = auto)</small>
+            <input id="speakers" type="number" min="1" max="20" />
+          </label>
+          <label class="check">
+            <input id="correction" type="checkbox" checked /> Fix names/terms with AI
+          </label>
+        </div>
+
+        <button id="submit" type="submit">Upload &amp; transcribe</button>
+        <div id="progress" hidden>
+          <progress id="bar" max="100" value="0"></progress>
+          <span id="progress-text"></span>
+        </div>
+        <p id="message" role="status"></p>
+      </form>
+
+      <h2>Recordings</h2>
+      <table id="jobs">
+        <thead><tr><th>Title</th><th>Size</th><th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p id="empty" hidden>No recordings yet.</p>
+    </div>
+
+    <section id="view-job" hidden>
+      <p><a href="#/">← All recordings</a></p>
+      <h2 id="job-title"></h2>
+      <p id="job-meta" class="muted"></p>
+      <p id="job-status" role="status"></p>
+
+      <div id="job-body" hidden>
+        <h3>Speakers</h3>
+        <p class="muted">Type a name for each speaker. Give two speakers the same name to merge them.</p>
+        <div id="speaker-list"></div>
+        <p id="save-note" class="muted" role="status"></p>
+
+        <button id="download" type="button">Download DOCX</button>
+
+        <h3>Preview</h3>
+        <div id="preview"></div>
+        <p id="preview-note" class="muted"></p>
+      </div>
+    </section>
   </main>
   <script type="module" src="./app.ts"></script>
 </body>

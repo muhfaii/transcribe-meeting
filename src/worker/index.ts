@@ -181,6 +181,36 @@ app.post("/api/jobs/:id/retry", async (c) => {
   return c.json({ ok: true });
 });
 
+// Custom speaker names (default names are computed in the browser from the transcript).
+const SPEAKER_KEY = /^(\d{1,3}|\?)$/;
+
+app.get("/api/jobs/:id/speakers", async (c) => {
+  const { results } = await c.env.DB.prepare("SELECT speaker_key, display_name FROM speakers WHERE job_id = ?")
+    .bind(c.req.param("id"))
+    .all<{ speaker_key: string; display_name: string }>();
+  return c.json({ names: Object.fromEntries(results.map((r) => [r.speaker_key, r.display_name])) });
+});
+
+app.put("/api/jobs/:id/speakers", async (c) => {
+  const id = c.req.param("id");
+  const { names } = await readJson<{ names: Record<string, string> }>(c);
+  if (!names || typeof names !== "object" || Array.isArray(names)) return c.json({ error: "Invalid request." }, 400);
+  const entries = Object.entries(names)
+    .map(([k, v]) => [k, String(v ?? "").trim().slice(0, 60)] as const)
+    .filter(([, v]) => v !== "");
+  if (entries.length > 30 || entries.some(([k]) => !SPEAKER_KEY.test(k))) return c.json({ error: "Invalid speakers." }, 400);
+  if (!(await c.env.DB.prepare("SELECT 1 FROM jobs WHERE id = ?").bind(id).first())) return c.json({ error: "Not found." }, 404);
+
+  // Replace the whole set; an empty name means "use the default".
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM speakers WHERE job_id = ?").bind(id),
+    ...entries.map(([k, v]) =>
+      c.env.DB.prepare("INSERT INTO speakers (job_id, speaker_key, display_name) VALUES (?, ?, ?)").bind(id, k, v),
+    ),
+  ]);
+  return c.json({ ok: true });
+});
+
 app.get("/api/jobs/:id/raw", async (c) => {
   const object = await c.env.MEDIA.get(rawKey(c.req.param("id")));
   if (!object) return c.json({ error: "No transcript yet." }, 404);

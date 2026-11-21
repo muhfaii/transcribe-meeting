@@ -1,5 +1,7 @@
 import type { Job } from "../shared/types";
 import { api, uploadFile } from "./upload";
+import { leaveJob, showJob } from "./job";
+import { ASR_CONTEXT_MAX_CHARS } from "../shared/qwen-config";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -26,7 +28,7 @@ function say(text: string, isError = false) {
 const STATUS_LABEL: Record<string, string> = {
   uploaded: "Sending to Qwen…",
   running: "Transcribing…",
-  transcribed: "Ready to review",
+  transcribed: "Ready — open to review",
   done: "Done",
   failed: "Failed",
 };
@@ -47,7 +49,14 @@ async function loadJobs() {
     ];
     for (const [i, text] of cells.entries()) {
       const td = document.createElement("td");
-      td.textContent = text; // textContent: titles are user input
+      if (i === 0 && (job.status === "transcribed" || job.status === "done")) {
+        const a = document.createElement("a");
+        a.href = `#/job/${job.id}`;
+        a.textContent = text; // textContent: titles are user input
+        td.append(a);
+      } else {
+        td.textContent = text;
+      }
       if (i === 2 && job.error) {
         td.className = "err";
         const why = document.createElement("div");
@@ -124,3 +133,29 @@ form.addEventListener("submit", async (e) => {
 
 void loadJobs();
 setInterval(loadJobs, 15000);
+
+// ---- context counter: only the first 400 characters reach the speech model ----
+const contextBox = $<HTMLTextAreaElement>("context");
+const contextCount = $("context-count");
+function updateContextCount() {
+  const n = [...contextBox.value].length;
+  contextCount.textContent =
+    n > ASR_CONTEXT_MAX_CHARS
+      ? `Only the first ${ASR_CONTEXT_MAX_CHARS} characters go to the speech model (${n} typed).`
+      : `${n}/${ASR_CONTEXT_MAX_CHARS}`;
+}
+contextBox.addEventListener("input", updateContextCount);
+updateContextCount();
+
+// ---- tiny router: #/ = recordings, #/job/<id> = transcript ----
+const viewMain = $("view-main");
+const viewJob = $("view-job");
+function route() {
+  const m = location.hash.match(/^#\/job\/([0-9a-f-]{36})$/);
+  viewMain.hidden = Boolean(m);
+  viewJob.hidden = !m;
+  if (m) void showJob(m[1]);
+  else leaveJob();
+}
+window.addEventListener("hashchange", route);
+route();

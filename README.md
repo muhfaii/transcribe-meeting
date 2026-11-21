@@ -3,9 +3,10 @@
 Upload a long meeting recording (m4a, 3+ hours), get a speaker-labelled DOCX.
 Runs entirely on Cloudflare's **Free plan** (Workers, R2, D1, Access); speech-to-text is the Qwen API.
 
-**Status: Phase 2 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
-status checked every 2 minutes by a Cron Trigger, and the raw transcript saved to R2.
-The transcript viewer, speaker rename, DOCX export, glossary UI and deployment hardening come next.
+**Status: Phase 3 of 5** — m4a upload (browser → R2 multipart), jobs sent to Qwen with speaker diarization,
+status checked every 2 minutes by a Cron Trigger, raw transcript saved to R2, and a transcript page with
+speaker renaming/merging and DOCX download (built in the browser).
+The glossary UI, AI correction pass and deployment hardening come next.
 See the plan: thin Worker, heavy browser (the Free plan allows 10 ms CPU per request).
 
 ## Local development
@@ -74,3 +75,10 @@ Paste the "Result structure" section of the output back so `src/shared/qwen-conf
    (`GET /api/jobs/:id/raw`). Failed jobs show the reason and a **Retry** button.
 3. All Qwen request/response details live in `src/shared/qwen-config.ts`.
    Not sent yet: a speaker-count hint (the parameter name is not in the docs; stored for later).
+
+## Transcript page and DOCX
+Open a finished recording from the list (`#/job/<id>`). The browser loads `raw.json`, merges sentences into
+speaker paragraphs (new paragraph on speaker change, a pause over 3 s, or ~90 s / 800 characters), and lets you name
+each speaker (saved per recording; two speakers with the same name are merged). **Download DOCX** builds
+`[hh:mm:ss] Name: text` paragraphs locally, so the Worker does no heavy work.
+Logic lives in `src/shared/transcript.ts` (tested); the DOCX layout is in `src/web/docx.ts`.
