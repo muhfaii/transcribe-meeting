@@ -43,3 +43,18 @@ Without R2 credentials, parts are uploaded through the Worker into a local R2 si
 ## Limits
 - m4a only, 1 GiB max (`MAX_UPLOAD_BYTES`), 50 MiB parts, 3 uploaded in parallel.
 - Each Worker request only signs ≤5 part URLs, so CPU stays far below 10 ms.
+
+## Phase 0: check the Qwen API with one real clip
+Settles the parameter names, result fields and time units before the pipeline is built.
+```bash
+# 1. Upload a SHORT, non-sensitive clip (1-3 min, 2+ speakers, ideally mixed ID/EN)
+npx wrangler r2 object put transcribe-meeting-media/probe/clip.m4a --file clip.m4a --remote
+# 2. Make a 1-hour download link Qwen can fetch
+export R2_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=…
+URL=$(node scripts/presign-get.mjs probe/clip.m4a)
+# 3. Run the probe (prints the raw request/response; see the script header for parameters to try)
+DASHSCOPE_API_KEY=sk-… scripts/qwen-probe.sh "$URL"
+# 4. Clean up
+npx wrangler r2 object delete transcribe-meeting-media/probe/clip.m4a --remote
+```
+Paste the "Result structure" section of the output back so `src/shared/qwen-config.ts` can be filled in.
