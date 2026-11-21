@@ -57,5 +57,5 @@ fi
 
 echo
 if [[ $FAIL -eq 0 ]]; then echo "Smoke test passed."; else echo "Smoke test FAILED."; fi
-echo "Not covered here: the Cron job and the Qwen calls. Check them with a real short recording (DEPLOY.md, step 10)."
+echo "Not covered here: the Cron job and the Qwen calls. Check them with a real short recording (DEPLOY.md, step 9)."
 exit $FAIL

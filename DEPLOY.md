@@ -1,7 +1,7 @@
 # Deployment checklist (Cloudflare Free plan)
 
 Do this from **your own machine** (it needs a browser login to Cloudflare). Tick each box; every step says how to
-check it worked. The first deploy is safe: until Access is configured (step 7) the API answers
+check it worked. The first deploy is safe: until Access is configured (step 6) the API answers
 `503 Access is required but not configured` and nothing can be uploaded or spent.
 
 **Before you start:** a Cloudflare account, Node 22+, a Qwen API key for **Singapore (ap-southeast-1)** from your
@@ -31,7 +31,7 @@ R2 may ask for a payment method to activate; the free tier (10 GB) still applies
 - [ ] `npm run db:migrate:remote`. Check: `npx wrangler d1 execute DB --remote --command "SELECT name FROM sqlite_master WHERE type='table'"`
   lists `jobs`, `speakers`, `glossary`.
 
-## 3. First deploy (safe: API is closed until step 7)
+## 3. First deploy (safe: API is closed until step 6)
 - [ ] `npm run deploy`. Note the URL it prints (`https://transcribe-meeting.<you>.workers.dev`).
   Check: the page loads, but `…/api/jobs` returns `503 … not configured`.
 
