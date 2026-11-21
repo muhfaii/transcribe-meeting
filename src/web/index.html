@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Transcriber</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main>
+    <h1>Meeting Transcriber</h1>
+
+    <form id="upload-form">
+      <label class="drop" for="file">
+        <input id="file" type="file" accept=".m4a,audio/mp4,audio/x-m4a" required />
+        <span id="file-label">Choose an .m4a recording (up to 1 GB, 3+ hours)</span>
+      </label>
+
+      <label>Title
+        <input id="title" type="text" maxlength="200" placeholder="Weekly sync" />
+      </label>
+
+      <label>Context <small>(agenda, names, jargon — improves accuracy)</small>
+        <textarea id="context" rows="3" maxlength="4000"></textarea>
+      </label>
+
+      <div class="row">
+        <label>Speakers <small>(blank = auto)</small>
+          <input id="speakers" type="number" min="1" max="20" />
+        </label>
+        <label class="check">
+          <input id="correction" type="checkbox" checked /> Fix names/terms with AI
+        </label>
+      </div>
+
+      <button id="submit" type="submit">Upload &amp; transcribe</button>
+      <div id="progress" hidden>
+        <progress id="bar" max="100" value="0"></progress>
+        <span id="progress-text"></span>
+      </div>
+      <p id="message" role="status"></p>
+    </form>
+
+    <h2>Recordings</h2>
+    <table id="jobs">
+      <thead><tr><th>Title</th><th>Size</th><th>Status</th><th>Created</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="empty" hidden>No recordings yet.</p>
+  </main>
+  <script type="module" src="./app.ts"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "name": "transcribe-meeting",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "dist/web",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "transcribe-meeting",
+      "database_id": "REPLACE_WITH_YOUR_D1_ID"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "transcribe-meeting-media" }
+  ],
+  "vars": {
+    "R2_BUCKET": "transcribe-meeting-media",
+    "MAX_UPLOAD_BYTES": "1073741824"
+  }
+}
