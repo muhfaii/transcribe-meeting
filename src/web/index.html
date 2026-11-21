@@ -24,10 +24,13 @@
           <input id="title" type="text" maxlength="200" placeholder="Weekly sync" />
         </label>
 
-        <label>Context <small>(agenda, names, jargon — improves accuracy)</small>
-          <textarea id="context" rows="3" maxlength="4000"></textarea>
-          <small id="context-count"></small>
-        </label>
+        <details id="context-box">
+          <summary>Optional context <small>(agenda, who is meeting — helps the AI correction)</small></summary>
+          <label>Context
+            <textarea id="context" rows="3" maxlength="4000"></textarea>
+            <small id="context-count"></small>
+          </label>
+        </details>
 
         <div class="row">
           <label>Speakers <small>(blank = auto)</small>

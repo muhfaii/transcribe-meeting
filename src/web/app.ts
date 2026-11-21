@@ -122,6 +122,7 @@ form.addEventListener("submit", async (e) => {
     });
     say("Uploaded.");
     form.reset();
+    $<HTMLDetailsElement>("context-box").open = false;
     fileLabel.textContent = "Choose an .m4a recording (up to 1 GB, 3+ hours)";
     await loadJobs();
   } catch (err) {
